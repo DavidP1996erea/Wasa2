@@ -53,7 +53,7 @@ public class Main {
         try {
             smtl = con.createStatement();
             smtl.execute("INSERT INTO Mensajes (texto) VALUES ('Mensaje de prueba')");
-            smtl.execute("INSERT INTO ad2223_dperea.Mensajes (texto) Values ('asdasda')");
+            smtl.execute("INSERT INTO ad2223_dperea.Mensajes (texto) SELECT (texto) FROM ad2223_rlindes.Mensajes ");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
