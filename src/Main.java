@@ -1,18 +1,19 @@
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
 
 
-
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             String conexionURL = "jdbc:mysql://dns11036.phdns11.es?"
-                    + "user=ad2223_rlindes&password=1234";
+                    + "user="+usuarioBaseDatos+"&password=1234";
             Connection con = DriverManager.getConnection(conexionURL);
             System.out.println(con.toString());
 
@@ -36,7 +37,7 @@ public class Main {
 
             enviarMensaje(con);
 
-            Scanner sc = new Scanner(System.in);
+           // Scanner sc = new Scanner(System.in);
 
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(e);
@@ -46,21 +47,162 @@ public class Main {
 
     }
 
-    private static void enviarMensaje(Connection con) {
-
-        Statement smtl = null;
+    private static void anadirContacto(Connection con) {
+        Scanner sc = new Scanner(System.in);
+        String nombre;
+        System.out.println("¿Cual es el nombre del usuario?");
+        nombre = sc.nextLine();
 
         try {
-            smtl = con.createStatement();
-            smtl.execute("INSERT INTO Mensajes (texto) VALUES ('Mensaje de prueba')");
-            smtl.execute("INSERT INTO ad2223_dperea.Mensajes (texto) SELECT (texto) FROM ad2223_rlindes.Mensajes ");
+
+            if(!comprobarNombreContacto(con,nombre)) {
+                PreparedStatement ps = con.prepareStatement("INSERT INTO Contactos (nombre_Contacto, esBloqueado) VALUES (?,?)");
+
+                ps.setString(1, nombre);
+                ps.setInt(2, 0);
+                ps.executeUpdate();
+            }else {
+                System.out.println("El usuario " + nombre + " ya existe");
+            }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
     }
 
-    private static void crearTablas(Connection con, String consulta ) {
+    private static boolean comprobarNombreContacto(Connection con, String nombreABuscar){
+
+        boolean existeUsuario=false;
+        String nombreTabla="";
+        try {
+
+            PreparedStatement ps = con.prepareStatement("SELECT nombre_Contacto FROM Contactos WHERE nombre_Contacto=?");
+            ps.setString(1,nombreABuscar);
+
+            ResultSet guardarNombre = ps.executeQuery();
+
+            while (guardarNombre.next()) {
+                nombreTabla = guardarNombre.getString(1);
+            }
+
+            if(!nombreTabla.equals("")){
+                existeUsuario=true;
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return existeUsuario;
+    }
+
+    private static int devolverIdPorNombre(Connection con, String nombreContacto){
+
+        int idContacto=0;
+
+        try{
+
+            PreparedStatement ps = con.prepareStatement("SELECT id_Contacto FROM Contactos WHERE nombre_Contacto=?");
+            ps.setString(1,nombreContacto);
+
+            ResultSet guardarNombre = ps.executeQuery();
+
+            while (guardarNombre.next()) {
+                idContacto = Integer.parseInt(guardarNombre.getString(1)) ;
+            }
+
+        }catch (SQLException e){
+            throw new RuntimeException();
+        }
+
+    return idContacto;
+    }
+
+    private static void enviarMensaje(Connection con, String nombreContacto) {
+        Scanner sc = new Scanner(System.in);
+        String texto;
+        try {
+
+            java.util.Date date = new java.util.Date();
+            java.sql.Date sqlDate = new java.sql.Date(date.getTime());
+            java.sql.Timestamp sqlTime = new java.sql.Timestamp(date.getTime());
+
+            mostrarMensajesUsuarios(con, usuarioBaseDatos, devolverIdPorNombre(con, nombreContacto));
+
+            System.out.println("Que mensaje quieres enviarle");
+            texto = sc.nextLine();
+            PreparedStatement ps = con.prepareStatement("INSERT INTO Mensajes (texto, hora, fecha, leido, id_Destino) VALUES (?,?,?,?,?)");
+            PreparedStatement ps2;
+
+
+            ps.setString(1, texto);
+            ps.setTimestamp(2, sqlTime);
+            ps.setDate(3, sqlDate);
+            ps.setInt(4, 0);
+            ps.setInt(5, devolverIdPorNombre(con, nombreContacto));
+
+
+            ps.executeUpdate();
+            ps2 = con.prepareStatement("INSERT INTO ad2223_"+nombreContacto+".Mensajes (texto, hora, fecha, leido, nombre_Origen) VALUES (?,?,?,?,?)");
+
+            ps2.setString(1, texto);
+            ps2.setTimestamp(2, sqlTime);
+            ps2.setDate(3, sqlDate);
+            ps2.setInt(4, 0);
+            ps2.setString(5, usuarioBaseDatos);
+
+            //ps2 = con.prepareStatement("INSERT INTO ad2223_"+nombreContacto+".Mensajes (texto, hora, fecha, leido ) SELECT texto, hora, fecha, leido FROM "+usuarioBaseDatos+".Mensajes order by id_Mensaje desc limit 1");
+
+            ps2.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+
+    private static void mostrarMensajesUsuarios(Connection con, String nombreOrigen, int idDestino){
+
+        List<String> listaMensajesOrigen = new ArrayList<>();
+        List<String> listaMensajeDestino = new ArrayList<>();
+        try{
+
+            PreparedStatement mensajesOrigen  = con.prepareStatement("SELECT texto FROM Mensajes where nombre_Origen is null");
+            ResultSet resultSetMensajesOrigen = mensajesOrigen.executeQuery();
+            while (resultSetMensajesOrigen.next()){
+                listaMensajesOrigen.add(resultSetMensajesOrigen.getString(1));
+
+            }
+
+            PreparedStatement mensajesDestino  = con.prepareStatement("SELECT texto FROM Mensajes where id_Destino = "+idDestino+" ");
+            ResultSet resultSetMensajesDestino = mensajesDestino.executeQuery();
+            while (resultSetMensajesDestino.next()){
+                listaMensajeDestino.add(resultSetMensajesDestino.getString(1));
+
+            }
+
+
+            for(int i =0; i<listaMensajeDestino.size()+listaMensajesOrigen.size();i++){
+
+                if (i != listaMensajesOrigen.size()){
+                    System.out.println( nombreOrigen+ ": "+listaMensajesOrigen.get(i));
+                }
+                if (i != listaMensajeDestino.size()){
+                    System.out.println( idDestino + ": "+  listaMensajeDestino.get(i));
+                }
+
+
+            }
+
+
+        }catch (SQLException e){
+            throw new RuntimeException(e);
+        }
+
+
+    }
+
+    private static void crearTablas(Connection con, String consulta) {
 
         Statement smtl = null;
         try {
