@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
-    public static String usuarioBaseDatos = "ad2223_rlindes";
+    public static String usuarioBaseDatos = "ad2223_dperea";
     public static void main(String[] args) {
 
 
@@ -36,7 +36,8 @@ public class Main {
 
 
 
-            enviarMensaje(con, "dperea");
+           anadirContacto(con);
+           enviarMensaje(con, "dperea");
 
 
 
@@ -241,7 +242,7 @@ public class Main {
             smtl = con.createStatement();
 
 
-            String usarTabla = "USE ad2223_rlindes";
+            String usarTabla = "USE "+usuarioBaseDatos+"";
 
             smtl.executeUpdate(usarTabla);
         } catch (SQLException e) {
