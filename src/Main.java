@@ -166,25 +166,40 @@ public class Main {
 
     private static void mostrarMensajesUsuarios(Connection con, String nombreContacto, String nombreOrigen, int idDestino){
 
-        List<String> listaMensajesOrigen = new ArrayList<>();
-        List<String> listaMensajeDestino = new ArrayList<>();
+      /*  List<String> listaMensajesOrigen = new ArrayList<>();
+        List<String> listaMensajeDestino = new ArrayList<>();*/
         try{
 
-            PreparedStatement mensajesOrigen  = con.prepareStatement("SELECT texto FROM Mensajes where nombre_Origen = 'ad2223_"+nombreContacto+"' ORDER BY fecha");
+            PreparedStatement mensajesOrigen  = con.prepareStatement("SELECT texto, id_Destino, nombre_Origen FROM Mensajes WHERE id_Destino = ?  OR nombre_Origen =?   ORDER BY fecha ASC, hora ASC ");
+            mensajesOrigen.setInt(1, idDestino);
+            mensajesOrigen.setString(2, "ad2223_"+nombreContacto);
+
+
             ResultSet resultSetMensajesOrigen = mensajesOrigen.executeQuery();
             while (resultSetMensajesOrigen.next()){
-                listaMensajesOrigen.add(resultSetMensajesOrigen.getString(1));
+               /* listaMensajesOrigen.add( resultSetMensajesOrigen.getString(1));*/
+
+                if(resultSetMensajesOrigen.getInt(2)==idDestino) {
+                    System.out.println(nombreOrigen + ": " + resultSetMensajesOrigen.getString(1));
+                }
+
+                if(resultSetMensajesOrigen.getString(3) != null){
+                    if(resultSetMensajesOrigen.getString(3).equals("ad2223_"+nombreContacto)){
+                        System.out.println(nombreContacto + ": " + resultSetMensajesOrigen.getString(1));
+                    }
+                }
+
 
             }
-
-            PreparedStatement mensajesDestino  = con.prepareStatement("SELECT texto FROM Mensajes where id_Destino = "+idDestino+" ORDER BY fecha ");
+/*
+            PreparedStatement mensajesDestino  = con.prepareStatement("SELECT texto FROM Mensajes where id_Destino = "+idDestino+" ORDER BY fecha,hora ASC ");
             ResultSet resultSetMensajesDestino = mensajesDestino.executeQuery();
             while (resultSetMensajesDestino.next()){
                 listaMensajeDestino.add(resultSetMensajesDestino.getString(1));
 
             }
-
-
+*/
+/*
             for(int i =0; i<listaMensajeDestino.size()+listaMensajesOrigen.size();i++){
 
                 if (i < listaMensajesOrigen.size()){
@@ -196,7 +211,7 @@ public class Main {
 
 
             }
-
+*/
 
         }catch (SQLException e){
             throw new RuntimeException(e);
